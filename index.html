@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complete Pump Selector</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+    color: white;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 800px;
+    margin: auto;
+    background: #1c2833;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+}
+
+h2 { text-align: center; }
+
+.section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #17202a;
+    border-radius: 8px;
+}
+
+.section h3 {
+    margin-top: 0;
+    color: #00d4ff;
+}
+
+input, select {
+    width: 100%;
+    padding: 8px;
+    margin: 6px 0;
+    border-radius: 6px;
+    border: none;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: #00d4ff;
+    border: none;
+    border-radius: 8px;
+    color: black;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover { background: #00aacc; }
+
+.result {
+    margin-top: 20px;
+    padding: 15px;
+    background: #0e141b;
+    border-radius: 8px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h2>Engineering Pump Selector</h2>
+
+<div class="section">
+<h3>Bore Details</h3>
+<label>Running Water Level (ft)</label>
+<input type="number" id="depth">
+
+<label>Bore Diameter (inch)</label>
+<select id="boreSize">
+    <option value="4">4 Inch</option>
+    <option value="5">5 Inch</option>
+</select>
+</div>
+
+<div class="section">
+<h3>Pipeline Details</h3>
+<label>Horizontal Distance (ft)</label>
+<input type="number" id="horizontal">
+
+<label>Pipe Size (inch)</label>
+<select id="pipe">
+    <option value="1">1 Inch</option>
+    <option value="1.5">1.5 Inch</option>
+    <option value="2">2 Inch</option>
+    <option value="2.5">2.5 Inch</option>
+</select>
+</div>
+
+<div class="section">
+<h3>Motor Details</h3>
+<label>Motor Type</label>
+<select id="motorType">
+    <option value="single">Single Phase</option>
+    <option value="three">Three Phase</option>
+</select>
+</div>
+
+<div class="section">
+<h3>Usage</h3>
+<label>Required Flow (LPS)</label>
+<input type="number" id="flow" value="4">
+</div>
+
+<button onclick="calculatePump()">Calculate Pump</button>
+
+<div class="result" id="result"></div>
+
+</div>
+
+<script>
+function calculatePump() {
+
+    let depthFt = parseFloat(document.getElementById("depth").value);
+    let horizontalFt = parseFloat(document.getElementById("horizontal").value) || 0;
+    let pipe = parseFloat(document.getElementById("pipe").value);
+    let boreSize = parseFloat(document.getElementById("boreSize").value);
+    let motorType = document.getElementById("motorType").value;
+    let flow = parseFloat(document.getElementById("flow").value);
+
+    if (!depthFt || !flow) {
+        alert("Please fill required values.");
+        return;
+    }
+
+    let verticalM = depthFt / 3.28;
+    let horizontalM = horizontalFt / 3.28;
+
+    // Friction per 100m based on pipe size
+    let frictionPer100M;
+    if (pipe == 1) frictionPer100M = 25;
+    else if (pipe == 1.5) frictionPer100M = 18;
+    else if (pipe == 2) frictionPer100M = 12;
+    else frictionPer100M = 8;
+
+    let frictionLoss = ((verticalM + horizontalM) / 100) * frictionPer100M;
+
+    let totalHead = verticalM + frictionLoss;
+
+    let efficiency = (motorType == "single") ? 0.6 : 0.7;
+
+    let hp = (flow * totalHead) / (75 * efficiency);
+
+    let recommendedHP =
+        hp <= 1 ? 1 :
+        hp <= 3 ? 3 :
+        hp <= 5 ? 5 :
+        hp <= 7.5 ? 7.5 :
+        hp <= 10 ? 10 :
+        hp <= 12.5 ? 12.5 :
+        hp <= 15 ? 15 : 20;
+
+    let stages = Math.ceil(totalHead / 10);
+
+    let warnings = "";
+
+    if (motorType == "single" && recommendedHP > 7.5)
+        warnings += "⚠ Single phase not suitable above 7.5 HP.<br>";
+
+    if (boreSize == 4 && recommendedHP > 7.5)
+        warnings += "⚠ 4-inch bore not safe for high HP.<br>";
+
+    if (flow > 4 && pipe < 2)
+        warnings += "⚠ Small pipe may cause heavy friction loss.<br>";
+
+    document.getElementById("result").innerHTML = `
+        <strong>Vertical Head:</strong> ${verticalM.toFixed(2)} m<br>
+        <strong>Horizontal Length:</strong> ${horizontalM.toFixed(2)} m<br>
+        <strong>Pipe Friction Loss:</strong> ${frictionLoss.toFixed(2)} m<br>
+        <strong>Total Head:</strong> ${totalHead.toFixed(2)} m<br><br>
+
+        <strong>Calculated HP:</strong> ${hp.toFixed(2)} HP<br>
+        <strong>Recommended Pump:</strong> ${recommendedHP} HP<br>
+        <strong>Estimated Stages:</strong> ${stages}<br><br>
+
+        <strong>Warnings:</strong><br>${warnings || "✔ No major warning detected."}
+    `;
+}
+</script>
+
+</body>
+</html>
